@@ -35,7 +35,7 @@ uploads/*
 !uploads/.gitkeep
 
 # Database files
-db.json
+# db.json  # Comentado para incluir en el repo y tener datos iniciales en deploy
 
 # Vercel
 .vercel

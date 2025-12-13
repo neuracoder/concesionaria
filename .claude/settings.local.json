@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)",
+      "Bash(taskkill /F /PID 94420)",
+      "Bash(taskkill:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout /t 5)",
+      "Bash(ping:*)",
+      "Bash(del:*)",
+      "Bash(set NODE_ENV=)",
+      "Bash(cat:*)",
+      "Bash(dir:*)",
+      "Bash(node migrate-images.js:*)",
+      "Bash(copy:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

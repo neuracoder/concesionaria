@@ -23,7 +23,11 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nAdd Vercel deployment configuration and update README\n\n- Add vercel.json with proper routing configuration\n- Update README with comprehensive documentation\n- Include deployment instructions for Vercel\n- Add project structure and customization guide\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(node scripts/copy-uploads.js:*)",
+      "Bash(move scriptscopy-uploads.js scriptscopy-uploads.cjs)",
+      "Bash(node scripts/copy-uploads.cjs:*)"
     ]
   }
 }

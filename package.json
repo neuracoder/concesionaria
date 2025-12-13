@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite\" \"node server.js\"",
+    "prebuild": "node scripts/copy-uploads.cjs",
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server.js"

@@ -17,7 +17,12 @@
       "Bash(node migrate-images.js:*)",
       "Bash(copy:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: Sistema completo de concesionaria con panel admin\n\n- Frontend React + TypeScript con Vite\n- Backend Express.js con almacenamiento JSON\n- Panel administrativo completo (CRUD vehículos)\n- Sistema de cotizaciones\n- Integración WhatsApp\n- Banner de ventas para demo\n- Diseño responsive con Tailwind CSS\n- Optimización de imágenes WebP\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd Vercel deployment configuration and update README\n\n- Add vercel.json with proper routing configuration\n- Update README with comprehensive documentation\n- Include deployment instructions for Vercel\n- Add project structure and customization guide\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")"
     ]
   }
 }

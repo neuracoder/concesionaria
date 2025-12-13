@@ -31,8 +31,8 @@ dist-ssr
 *.sw?
 
 # Uploads directory (optional - comment if you want to include sample images)
-uploads/*
-!uploads/.gitkeep
+# uploads/*  # Comentado para incluir imágenes en el deploy
+# !uploads/.gitkeep
 
 # Database files
 # db.json  # Comentado para incluir en el repo y tener datos iniciales en deploy

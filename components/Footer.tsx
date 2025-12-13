@@ -34,7 +34,7 @@ const Footer: React.FC = () => {
                 <div className="bg-red-600 p-2 rounded-lg group-hover:bg-red-700 border border-red-500">
                   <Mail className="h-4 w-4" />
                 </div>
-                <span className="font-semibold">ventas@autos-neura.com.ar</span>
+                <span className="font-semibold">ventas@tuconcesionaria.com.ar</span>
               </li>
             </ul>
           </div>

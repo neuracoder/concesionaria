@@ -32,24 +32,35 @@ export const VehicleProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [vRes, mRes, moRes] = await Promise.all([
-          fetch(`${API_URL}/vehicles`).catch(() => null),
-          fetch(`${API_URL}/marcas`).catch(() => null),
-          fetch(`${API_URL}/modelos`).catch(() => null)
-        ]);
+        // Try to load from db.json (for production/Vercel)
+        const dbRes = await fetch('/db.json').catch(() => null);
 
-        if (vRes && vRes.ok) setVehicles(await vRes.json());
-        else setVehicles(VEHICULOS); // Fallback to mock if server not running
+        if (dbRes && dbRes.ok) {
+          const db = await dbRes.json();
+          setVehicles(db.vehiculos || VEHICULOS);
+          setMarcas(db.marcas || MARCAS);
+          setModelos(db.modelos || MODELOS);
+        } else {
+          // Try API (for local development with server running)
+          const [vRes, mRes, moRes] = await Promise.all([
+            fetch(`${API_URL}/vehicles`).catch(() => null),
+            fetch(`${API_URL}/marcas`).catch(() => null),
+            fetch(`${API_URL}/modelos`).catch(() => null)
+          ]);
 
-        if (mRes && mRes.ok) setMarcas(await mRes.json());
-        else setMarcas(MARCAS);
+          if (vRes && vRes.ok) setVehicles(await vRes.json());
+          else setVehicles(VEHICULOS);
 
-        if (moRes && moRes.ok) setModelos(await moRes.json());
-        else setModelos(MODELOS);
+          if (mRes && mRes.ok) setMarcas(await mRes.json());
+          else setMarcas(MARCAS);
+
+          if (moRes && moRes.ok) setModelos(await moRes.json());
+          else setModelos(MODELOS);
+        }
 
       } catch (error) {
         console.error("Error fetching data:", error);
-        // Fallback
+        // Fallback to mock data
         setVehicles(VEHICULOS);
         setMarcas(MARCAS);
         setModelos(MODELOS);

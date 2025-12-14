@@ -3,6 +3,8 @@ const path = require('path');
 
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 const publicUploadsDir = path.join(__dirname, '..', 'public', 'uploads');
+const dbJsonSrc = path.join(__dirname, '..', 'db.json');
+const dbJsonDest = path.join(__dirname, '..', 'public', 'db.json');
 
 // Crear directorio public/uploads si no existe
 if (!fs.existsSync(publicUploadsDir)) {
@@ -21,11 +23,19 @@ if (fs.existsSync(uploadsDir)) {
     // Solo copiar archivos, no directorios
     if (fs.statSync(srcPath).isFile()) {
       fs.copyFileSync(srcPath, destPath);
-      console.log(`Copied: ${file}`);
+      console.log(`Copied image: ${file}`);
     }
   });
 
-  console.log(`✅ Successfully copied ${files.length} files to public/uploads`);
+  console.log(`✅ Successfully copied ${files.length} images to public/uploads`);
 } else {
   console.log('⚠️  uploads directory not found');
+}
+
+// Copiar db.json a public/
+if (fs.existsSync(dbJsonSrc)) {
+  fs.copyFileSync(dbJsonSrc, dbJsonDest);
+  console.log('✅ Successfully copied db.json to public/');
+} else {
+  console.log('⚠️  db.json not found');
 }

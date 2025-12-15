@@ -1,26 +1,25 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Vehiculo, Marca, Modelo } from '../types';
 import { VEHICULOS, MARCAS, MODELOS } from '../services/mockData';
+import { supabase } from '../lib/supabase';
 
 interface VehicleContextType {
   vehicles: Vehiculo[];
   marcas: Marca[];
   modelos: Modelo[];
-  addVehicle: (vehicle: Vehiculo) => void;
-  updateVehicle: (id: number, vehicle: Vehiculo) => void;
-  deleteVehicle: (id: number) => void;
+  addVehicle: (vehicle: Vehiculo) => Promise<void>;
+  updateVehicle: (id: number, vehicle: Vehiculo) => Promise<void>;
+  deleteVehicle: (id: number) => Promise<void>;
   getVehicleBySlug: (slug: string) => Vehiculo | undefined;
   getDestacados: () => Vehiculo[];
   getRelacionados: (vehicle: Vehiculo) => Vehiculo[];
-  // New methods for custom data
   addCustomMarca: (nombre: string) => Promise<Marca>;
   addCustomModelo: (nombre: string, marcaId: number) => Promise<Modelo>;
+  uploadImage: (file: Blob, filename: string) => Promise<string>;
   isLoading: boolean;
 }
 
 const VehicleContext = createContext<VehicleContextType | undefined>(undefined);
-
-const API_URL = 'http://localhost:3001/api';
 
 export const VehicleProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
@@ -28,63 +27,180 @@ export const VehicleProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load initial data
+  // Load initial data from Supabase
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Try to load from db.json (for production/Vercel)
-        const dbRes = await fetch('/db.json').catch(() => null);
-
-        if (dbRes && dbRes.ok) {
-          const db = await dbRes.json();
-          setVehicles(db.vehiculos || VEHICULOS);
-          setMarcas(db.marcas || MARCAS);
-          setModelos(db.modelos || MODELOS);
-        } else {
-          // Try API (for local development with server running)
-          const [vRes, mRes, moRes] = await Promise.all([
-            fetch(`${API_URL}/vehicles`).catch(() => null),
-            fetch(`${API_URL}/marcas`).catch(() => null),
-            fetch(`${API_URL}/modelos`).catch(() => null)
-          ]);
-
-          if (vRes && vRes.ok) setVehicles(await vRes.json());
-          else setVehicles(VEHICULOS);
-
-          if (mRes && mRes.ok) setMarcas(await mRes.json());
-          else setMarcas(MARCAS);
-
-          if (moRes && moRes.ok) setModelos(await moRes.json());
-          else setModelos(MODELOS);
-        }
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        // Fallback to mock data
-        setVehicles(VEHICULOS);
-        setMarcas(MARCAS);
-        setModelos(MODELOS);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchAllData();
   }, []);
+
+  const fetchAllData = async () => {
+    try {
+      // Fetch Marcas
+      const { data: marcasData, error: marcasError } = await supabase
+        .from('marcas')
+        .select('*')
+        .order('nombre');
+
+      if (marcasError) throw marcasError;
+      setMarcas(marcasData || []);
+
+      // Fetch Modelos
+      const { data: modelosData, error: modelosError } = await supabase
+        .from('modelos')
+        .select('*')
+        .order('nombre');
+
+      if (modelosError) throw modelosError;
+
+      // Transform to match frontend type (marcaId instead of marca_id)
+      const transformedModelos = (modelosData || []).map(m => ({
+        id: m.id,
+        marcaId: m.marca_id,
+        nombre: m.nombre
+      }));
+      setModelos(transformedModelos);
+
+      // Fetch Vehiculos with their images
+      const { data: vehiculosData, error: vehiculosError } = await supabase
+        .from('vehiculos')
+        .select(`
+          *,
+          vehiculo_imagenes (id, url, orden)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (vehiculosError) throw vehiculosError;
+
+      // Transform to match frontend Vehiculo type
+      const transformedVehiculos = (vehiculosData || []).map(v => {
+        const marca = marcasData?.find(m => m.id === v.marca_id);
+        const modelo = transformedModelos.find(m => m.id === v.modelo_id);
+
+        return {
+          id: v.id,
+          marca: marca || { id: v.marca_id, nombre: 'Unknown', slug: 'unknown' },
+          modelo: modelo || { id: v.modelo_id, marcaId: v.marca_id, nombre: 'Unknown' },
+          año: v.año,
+          condicion: v.condicion,
+          combustible: v.combustible,
+          transmision: v.transmision,
+          kilometraje: v.kilometraje,
+          motor: v.motor || '',
+          puertas: v.puertas || 4,
+          color: v.color,
+          precio: Number(v.precio),
+          precioVisible: v.precio_visible,
+          disponible: v.disponible,
+          destacado: v.destacado,
+          descripcion: v.descripcion || '',
+          slug: v.slug,
+          imagenes: (v.vehiculo_imagenes || [])
+            .sort((a: any, b: any) => a.orden - b.orden)
+            .map((img: any) => ({
+              url: img.url,
+              orden: img.orden
+            })),
+          vistas: v.vistas || 0
+        } as Vehiculo;
+      });
+
+      setVehicles(transformedVehiculos);
+
+    } catch (error) {
+      console.error('Error fetching data from Supabase:', error);
+      // Fallback to mock data
+      setVehicles(VEHICULOS);
+      setMarcas(MARCAS);
+      setModelos(MODELOS);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const uploadImage = async (file: Blob, filename: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('vehicle-images')
+        .upload(filename, file, {
+          contentType: 'image/webp',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('vehicle-images')
+        .getPublicUrl(data.path);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading image to Supabase Storage:', error);
+      throw error;
+    }
+  };
 
   const addVehicle = async (vehicle: Vehiculo) => {
     try {
-      const res = await fetch(`${API_URL}/vehicles`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(vehicle)
-      });
-      if (res.ok) {
-        const savedVehicle = await res.json();
-        setVehicles(prev => [savedVehicle, ...prev]);
-      }
-    } catch (e) {
-      console.error("Error saving vehicle", e);
+      // Upload images to Supabase Storage if they are base64 data URLs
+      const uploadedImageUrls = await Promise.all(
+        vehicle.imagenes.map(async (img, index) => {
+          if (img.url.startsWith('data:')) {
+            // Convert base64 to blob
+            const response = await fetch(img.url);
+            const blob = await response.blob();
+            const filename = `${vehicle.slug}-${Date.now()}-${index}.webp`;
+            const publicUrl = await uploadImage(blob, filename);
+            return { ...img, url: publicUrl };
+          }
+          return img;
+        })
+      );
+
+      // Insert vehicle
+      const { data: vehiculoData, error: vehiculoError } = await supabase
+        .from('vehiculos')
+        .insert({
+          id: vehicle.id,
+          marca_id: vehicle.marca.id,
+          modelo_id: vehicle.modelo.id,
+          año: vehicle.año,
+          precio: vehicle.precio,
+          precio_visible: vehicle.precioVisible,
+          kilometraje: vehicle.kilometraje,
+          combustible: vehicle.combustible,
+          transmision: vehicle.transmision,
+          condicion: vehicle.condicion,
+          color: vehicle.color,
+          descripcion: vehicle.descripcion,
+          slug: vehicle.slug,
+          destacado: vehicle.destacado,
+          disponible: vehicle.disponible,
+          motor: vehicle.motor,
+          puertas: vehicle.puertas
+        })
+        .select()
+        .single();
+
+      if (vehiculoError) throw vehiculoError;
+
+      // Insert images
+      const imagesToInsert = uploadedImageUrls.map(img => ({
+        vehiculo_id: vehicle.id,
+        url: img.url,
+        orden: img.orden
+      }));
+
+      const { error: imagenesError } = await supabase
+        .from('vehiculo_imagenes')
+        .insert(imagesToInsert);
+
+      if (imagenesError) throw imagenesError;
+
+      // Refresh data
+      await fetchAllData();
+
+    } catch (error) {
+      console.error('Error adding vehicle to Supabase:', error);
       // Optimistic update fallback
       setVehicles(prev => [vehicle, ...prev]);
     }
@@ -92,32 +208,92 @@ export const VehicleProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const updateVehicle = async (id: number, updatedVehicle: Vehiculo) => {
     try {
-      const res = await fetch(`${API_URL}/vehicles/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedVehicle)
-      });
+      // Upload new images to Supabase Storage if they are base64 data URLs
+      const uploadedImageUrls = await Promise.all(
+        updatedVehicle.imagenes.map(async (img, index) => {
+          if (img.url.startsWith('data:')) {
+            const response = await fetch(img.url);
+            const blob = await response.blob();
+            const filename = `${updatedVehicle.slug}-${Date.now()}-${index}.webp`;
+            const publicUrl = await uploadImage(blob, filename);
+            return { ...img, url: publicUrl };
+          }
+          return img;
+        })
+      );
 
-      if (res.ok) {
-        const savedVehicle = await res.json();
-        // Use the vehicle returned by the server (with processed images)
-        setVehicles(prev => prev.map(v => v.id === id ? savedVehicle : v));
-      } else {
-        // Fallback to optimistic update if server fails
-        setVehicles(prev => prev.map(v => v.id === id ? updatedVehicle : v));
-      }
-    } catch (e) {
-      console.error("Error updating vehicle", e);
+      // Update vehicle
+      const { error: vehiculoError } = await supabase
+        .from('vehiculos')
+        .update({
+          marca_id: updatedVehicle.marca.id,
+          modelo_id: updatedVehicle.modelo.id,
+          año: updatedVehicle.año,
+          precio: updatedVehicle.precio,
+          precio_visible: updatedVehicle.precioVisible,
+          kilometraje: updatedVehicle.kilometraje,
+          combustible: updatedVehicle.combustible,
+          transmision: updatedVehicle.transmision,
+          condicion: updatedVehicle.condicion,
+          color: updatedVehicle.color,
+          descripcion: updatedVehicle.descripcion,
+          slug: updatedVehicle.slug,
+          destacado: updatedVehicle.destacado,
+          disponible: updatedVehicle.disponible,
+          motor: updatedVehicle.motor,
+          puertas: updatedVehicle.puertas
+        })
+        .eq('id', id);
+
+      if (vehiculoError) throw vehiculoError;
+
+      // Delete old images
+      const { error: deleteError } = await supabase
+        .from('vehiculo_imagenes')
+        .delete()
+        .eq('vehiculo_id', id);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new images
+      const imagesToInsert = uploadedImageUrls.map(img => ({
+        vehiculo_id: id,
+        url: img.url,
+        orden: img.orden
+      }));
+
+      const { error: imagenesError } = await supabase
+        .from('vehiculo_imagenes')
+        .insert(imagesToInsert);
+
+      if (imagenesError) throw imagenesError;
+
+      // Refresh data
+      await fetchAllData();
+
+    } catch (error) {
+      console.error('Error updating vehicle in Supabase:', error);
+      // Optimistic update fallback
       setVehicles(prev => prev.map(v => v.id === id ? updatedVehicle : v));
     }
   };
 
   const deleteVehicle = async (id: number) => {
     try {
-      await fetch(`${API_URL}/vehicles/${id}`, { method: 'DELETE' });
+      // Delete vehicle (cascade will delete images)
+      const { error } = await supabase
+        .from('vehiculos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Update local state
       setVehicles(prev => prev.filter(v => v.id !== id));
-    } catch (e) {
-      console.error("Error deleting vehicle", e);
+
+    } catch (error) {
+      console.error('Error deleting vehicle from Supabase:', error);
+      // Optimistic delete fallback
       setVehicles(prev => prev.filter(v => v.id !== id));
     }
   };
@@ -127,7 +303,6 @@ export const VehicleProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const getDestacados = () => {
-    // If we have API data, filter it. 
     return vehicles.filter(v => v.destacado && v.disponible);
   };
 
@@ -148,19 +323,22 @@ export const VehicleProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
 
     try {
-      const res = await fetch(`${API_URL}/marcas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMarca)
-      });
-      if (res.ok) {
-        setMarcas(prev => [...prev, newMarca]);
-        return newMarca;
-      }
-    } catch (e) { console.error(e); }
+      const { data, error } = await supabase
+        .from('marcas')
+        .insert(newMarca)
+        .select()
+        .single();
 
-    setMarcas(prev => [...prev, newMarca]);
-    return newMarca;
+      if (error) throw error;
+
+      setMarcas(prev => [...prev, data]);
+      return data;
+    } catch (error) {
+      console.error('Error adding marca to Supabase:', error);
+      // Fallback
+      setMarcas(prev => [...prev, newMarca]);
+      return newMarca;
+    }
   };
 
   const addCustomModelo = async (nombre: string, marcaId: number): Promise<Modelo> => {
@@ -174,19 +352,32 @@ export const VehicleProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
 
     try {
-      const res = await fetch(`${API_URL}/modelos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newModelo)
-      });
-      if (res.ok) {
-        setModelos(prev => [...prev, newModelo]);
-        return newModelo;
-      }
-    } catch (e) { console.error(e); }
+      const { data, error } = await supabase
+        .from('modelos')
+        .insert({
+          id: newModelo.id,
+          marca_id: marcaId,
+          nombre
+        })
+        .select()
+        .single();
 
-    setModelos(prev => [...prev, newModelo]);
-    return newModelo;
+      if (error) throw error;
+
+      const transformedModelo = {
+        id: data.id,
+        marcaId: data.marca_id,
+        nombre: data.nombre
+      };
+
+      setModelos(prev => [...prev, transformedModelo]);
+      return transformedModelo;
+    } catch (error) {
+      console.error('Error adding modelo to Supabase:', error);
+      // Fallback
+      setModelos(prev => [...prev, newModelo]);
+      return newModelo;
+    }
   };
 
   return (
@@ -202,6 +393,7 @@ export const VehicleProvider: React.FC<{ children: ReactNode }> = ({ children })
       getRelacionados,
       addCustomMarca,
       addCustomModelo,
+      uploadImage,
       isLoading
     }}>
       {children}

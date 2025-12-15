@@ -27,7 +27,8 @@
       "Bash(git ls-tree:*)",
       "Bash(node scripts/copy-uploads.js:*)",
       "Bash(move scriptscopy-uploads.js scriptscopy-uploads.cjs)",
-      "Bash(node scripts/copy-uploads.cjs:*)"
+      "Bash(node scripts/copy-uploads.cjs:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

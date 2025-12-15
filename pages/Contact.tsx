@@ -1,29 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 
 const Contact: React.FC = () => {
-    const [contactInfo, setContactInfo] = useState({
-        email: '',
-        phone: '',
-        address: '',
-        mapUrl: ''
-    });
+    const contactInfo = {
+        email: 'contacto@tu-concesionaria.com.ar',
+        phone: '(011) 5555-1234',
+        address: 'Av. del Libertador 4500, Buenos Aires, Argentina',
+        mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3286.186626182054!2d-58.44522668477138!3d-34.54882998047385!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bcb436efe79dbd%3A0xfb39ce2697b83d1b!2sAv.%20del%20Libertador%204500%2C%20C1426BXD%20CABA!5e0!3m2!1ses!2sar!4v1625686000000!5m2!1ses!2sar'
+    };
 
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         message: ''
     });
-
-    useEffect(() => {
-        // Fetch contact info from backend
-        fetch('http://localhost:3001/api/contact-info')
-            .then(res => res.json())
-            .then(data => {
-                if (data) setContactInfo(data);
-            })
-            .catch(err => console.error("Error fetching contact info:", err));
-    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -51,14 +41,14 @@ const Contact: React.FC = () => {
                                     <Phone className="h-5 w-5 text-white" />
                                 </div>
                                 <h3 className="font-bold text-white mb-1 uppercase">Teléfono</h3>
-                                <p className="text-gray-400 text-sm font-semibold">{contactInfo.phone || 'Cargando...'}</p>
+                                <p className="text-gray-400 text-sm font-semibold">{contactInfo.phone}</p>
                             </div>
                             <div className="bg-zinc-900 p-6 rounded-xl shadow-2xl shadow-red-900/50 border border-red-900/30">
                                 <div className="bg-red-600 w-10 h-10 rounded-lg flex items-center justify-center mb-4 border border-red-500">
                                     <Mail className="h-5 w-5 text-white" />
                                 </div>
                                 <h3 className="font-bold text-white mb-1 uppercase">Email</h3>
-                                <p className="text-gray-400 text-sm break-all font-semibold">{contactInfo.email || 'Cargando...'}</p>
+                                <p className="text-gray-400 text-sm break-all font-semibold">{contactInfo.email}</p>
                             </div>
                         </div>
 
@@ -68,22 +58,16 @@ const Contact: React.FC = () => {
                                 <h3 className="font-bold text-white uppercase tracking-wide">Nuestra Ubicación</h3>
                             </div>
                             <div className="flex-grow bg-black rounded-lg overflow-hidden border border-red-900/30">
-                                {contactInfo.mapUrl ? (
-                                    <iframe
-                                        src={contactInfo.mapUrl}
-                                        width="100%"
-                                        height="100%"
-                                        style={{ border: 0 }}
-                                        allowFullScreen
-                                        loading="lazy"
-                                        referrerPolicy="no-referrer-when-downgrade"
-                                        title="Ubicación"
-                                    ></iframe>
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-500 font-semibold">
-                                        CARGANDO MAPA...
-                                    </div>
-                                )}
+                                <iframe
+                                    src={contactInfo.mapUrl}
+                                    width="100%"
+                                    height="100%"
+                                    style={{ border: 0 }}
+                                    allowFullScreen
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer-when-downgrade"
+                                    title="Ubicación"
+                                ></iframe>
                             </div>
                             <p className="mt-4 text-sm text-gray-400 font-semibold">{contactInfo.address}</p>
                         </div>
